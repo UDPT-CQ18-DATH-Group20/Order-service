@@ -51,7 +51,7 @@ module.exports  = {
 
     async updateOrderById(id, update) {
         return await Order.findOneAndUpdate(id, update, {
-            new: true
+            new: true,
         });
     },
 

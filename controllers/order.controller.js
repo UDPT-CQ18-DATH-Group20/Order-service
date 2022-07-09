@@ -1,32 +1,90 @@
 const Order = require('../models/order.model');
 const Item = require('../models/item.model');
 
+const superagent = require('superagent');
 const mongoose = require('mongoose');
+const jwt = require('jsonwebtoken');
+const { request } = require('../app');
 
 class OrderController {
-    async index(req, res) {
-        res.send({
-            Test: 'success'
-        })
-    }
+    async createOrder(req, res) {
+        let failed = false;
+        let Authorization = req.header('Authorization')
+        if (!Authorization) {
+            res.status(401).send({
+                error: 'Not authorized for this resource.'
+            })
+            failed = true
+        }
 
-    async updateOrderStatus(req, res) {
-        console.log(req.body)
-        update = { status: req.body.status}
-        Order.updateOrderById(req.body, update)
-            .then(function (result) {
+        if(failed) return
+        let token = Authorization.replace('Bearer ', '')
+        let data = jwt.verify(token, process.env.JWT_KEY)
+        let totalPrice = 0
+        await superagent
+            .get('http://localhost:3002/api/cart')
+            //.send({ user_id: data.user_id }) // sends a JSON post body
+            .set('X-API-Key', 'foobar')
+            .set('accept', 'json')
+            .set('Authorization', req.header('Authorization'))
+            .then(response => {
+                    console.log(response.body)
+                    response.body.items.forEach(item => {
+                        totalPrice += item.sum_amount
+                    })
+            })
+            .catch(err => {
+                failed = true;
+                console.log(err.status);
+                res.status(err.status).send({
+                    error: 'Failed to get items from cart'
+                })
+            })
+
+        if (failed) return
+        let order = {
+            _id: mongoose.Types.ObjectId(),
+            account_id: data._id,
+            phone: req.body.phone,
+            email: req.body.email,
+            address: req.body.address,
+            receiver_name: req.body.receiver,
+            total_amount: totalPrice,
+            date: new Date()
+        }
+
+        await Order.addOrder(order)
+            .then(result => {
                 res.send({
-                    result
+                    result: 'Success'
                 })
             })
             .catch(error => {
-                res.status(401).send({
-                    error
+                console.log(error)
+                failed = true;
+                res.status(424).send({
+                    result: 'Error while adding order to database'
                 })
             });
     }
 
-    async createOrder(req, res) {
+    async updateOrderStatus(req, res) {
+        console.log(req.body)
+        let update = { status: req.body.status}
+        Order.updateOrderById(req.body.id, update)
+            .then(function (result) {
+                res.send({
+                    result: 'Success'
+                })
+            })
+            .catch(error => {
+                res.status(401).send({
+                    error: 'Failed while updating order'
+                })
+            });
+    }
+
+    async index(req, res) {
         let failed = false;
         let order = {
             _id: mongoose.Types.ObjectId(),
