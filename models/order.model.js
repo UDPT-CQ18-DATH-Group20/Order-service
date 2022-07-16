@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
-//const mongoosePaginate = require('mongoose-paginate-v2');
+const mongoosePaginate = require('mongoose-paginate-v2');
 
 const orderSchema = new Schema({
     _id: {
@@ -27,6 +27,31 @@ const orderSchema = new Schema({
         type: String,
         required: true
     },
+    items: [{
+        goods_id: {
+            type: String,
+            //required: true
+        },
+        name: {
+            type: String,
+            //required: true
+        },
+        picture: {
+            type: String,
+        },
+        quantity: {
+            type: Number,
+            auto: 1
+        },
+        sum_amount: {
+            type: Number,
+            auto: 0
+        }
+    }],
+    store_id: {
+        type: String,
+        //required: true
+    },
     total_amount: {
         type: Number,
         auto: 0
@@ -42,12 +67,12 @@ const orderSchema = new Schema({
     },
 });
 
-//orderSchema.plugin(mongoosePaginate);
+orderSchema.plugin(mongoosePaginate);
 const Order = mongoose.model('Order', orderSchema);
 module.exports  = {
-    // async loadWithPagination(filter, options) {
-    //     return await Order.paginate(filter, options)
-    // },
+    async loadWithPagination(filter, options) {
+        return await Order.paginate(filter, options)
+    },
 
     async updateOrderById(id, update) {
         return await Order.findOneAndUpdate(id, update, {
