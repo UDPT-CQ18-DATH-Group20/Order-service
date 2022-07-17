@@ -21,49 +21,97 @@ class OrderController {
         let data = jwt.verify(token, process.env.JWT_KEY)
 
         //Role check
-        // if (data.user_type !== 1) {
-        //     res.status(401).send({
-        //         error: 'Not authorized for this resource.'
-        //     })
-        //     return
-        // }
+        if (data.user_type !== 1) {
+            res.status(401).send({
+                error: 'Not authorized for this resource.'
+            })
+            return
+        }
 
         let totalPrice = 0
         let items = []
+        let goods = []
         await superagent
             .get('http://localhost:3002/api/cart')
             .set('X-API-Key', 'foobar')
             .set('accept', 'json')
             .set('Authorization', req.header('Authorization'))
             .then(response => {
-                    //console.log(response.body)
+                    console.log(response.body)
                     items = response.body.items
                     response.body.items.forEach(item => {
                         totalPrice += item.sum_amount
+                        let good = { }
+                        good.goods_id = item.goods_id
+                        good.amount = item.quantity
+                        //console.log(good)
+                        goods.push(good)
                     })
+                    console.log(goods)
             })
             .catch(err => {
                 failed = true;
-                console.log(err.status);
-                res.status(err.status).send({
+                //console.log(err.status);
+                res.status(424).send({
                     error: 'Failed to get items from cart'
+                })
+            })
+        
+        if (failed) return
+        let updates = []
+        //Call api to get store of good
+        await superagent
+            .get('http://localhost:3001/api/goods/order-transaction')
+            .send(goods)
+            .set('X-API-Key', 'foobar')
+            .set('accept', 'json')
+            .set('Authorization', req.header('Authorization'))
+            .then(response => {
+                    console.log(response.body)
+                    let mergeItems = items.map((item, i) => Object.assign({}, item, response.body[i]));
+
+                    let storeGroup = mergeItems.group( ({ store_id }) => store_id );
+                    console.log(storeGroup)
+                    for (const [key, value] of Object.entries(storeGroup)) {
+                        console.log(key, value);
+                        let order = {
+                            _id: mongoose.Types.ObjectId(),
+                            account_id: data._id,
+                            phone: req.body.phone,
+                            email: req.body.email,
+                            address: req.body.address,
+                            receiver_name: req.body.receiver,
+                            total_amount: totalPrice,
+                            date: new Date(),
+                            items: value,
+                            order_id: key
+                        }
+                        updates.push(order)
+                    }
+                    console.log(updates)
+            })
+            .catch(err => {
+                failed = true;
+                //console.log(err.status);
+                res.status(424).send({
+                    error: 'Failed to get store info of items'
                 })
             })
 
         if (failed) return
-        let order = {
-            _id: mongoose.Types.ObjectId(),
-            account_id: data._id,
-            phone: req.body.phone,
-            email: req.body.email,
-            address: req.body.address,
-            receiver_name: req.body.receiver,
-            total_amount: totalPrice,
-            date: new Date(),
-            items: items
-        }
-
-        await Order.addOrder(order)
+        // let order = {
+        //     _id: mongoose.Types.ObjectId(),
+        //     account_id: data._id,
+        //     phone: req.body.phone,
+        //     email: req.body.email,
+        //     address: req.body.address,
+        //     receiver_name: req.body.receiver,
+        //     total_amount: totalPrice,
+        //     date: new Date(),
+        //     items: items
+        // }
+        return;
+        await Order.addOrders(updates)
             .then(result => {
                 res.send({
                     result: 'Success'
@@ -114,12 +162,12 @@ class OrderController {
         let token = Authorization.replace('Bearer ', '')
         let data = jwt.verify(token, process.env.JWT_KEY)
         //console.log(data)
-        // if (data.user_type !== 1) {
-        //     res.status(401).send({
-        //         error: 'Not authorized for this resource.'
-        //     })
-        //     return
-        // }
+        if (data.user_type !== 2) {
+            res.status(401).send({
+                error: 'Not authorized for this resource.'
+            })
+            return
+        }
 
         let update = { status: req.body.status}
         Order.updateOrderById({ _id: req.body.order_id }, update)
@@ -190,12 +238,12 @@ class OrderController {
         let token = Authorization.replace('Bearer ', '')
         let data = jwt.verify(token, process.env.JWT_KEY)
         //console.log(data)
-        // if (data.user_type !== 3) {
-        //     res.status(401).send({
-        //         error: 'Not authorized for this resource.'
-        //     })
-        //     return
-        // }
+        if (data.user_type !== 2) {
+            res.status(401).send({
+                error: 'Not authorized for this resource.'
+            })
+            return
+        }
 
         let options = {
             page: 1,
@@ -233,12 +281,12 @@ class OrderController {
         let token = Authorization.replace('Bearer ', '')
         let data = jwt.verify(token, process.env.JWT_KEY)
         //console.log(data)
-        // if (data.user_type !== 4) {
-        //     res.status(401).send({
-        //         error: 'Not authorized for this resource.'
-        //     })
-        //     return
-        // }
+        if (data.user_type !== 3) {
+            res.status(401).send({
+                error: 'Not authorized for this resource.'
+            })
+            return
+        }
 
         let options = {
             page: 1,

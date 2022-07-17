@@ -84,6 +84,10 @@ module.exports  = {
         return await Order.create(order);
     },
 
+    async addOrders(orders) {
+        return await Order.insertMany(orders);
+    },
+
     async getOrderById(id) {
         return await Order.findOne(id);
     },
