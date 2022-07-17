@@ -32,12 +32,12 @@ class OrderController {
         let items = []
         let goods = []
         await superagent
-            .get('http://localhost:3002/api/cart')
+            .get('http://host.docker.internal:3002/api/cart')
             .set('X-API-Key', 'foobar')
             .set('accept', 'json')
             .set('Authorization', req.header('Authorization'))
             .then(response => {
-                    console.log(response.body)
+                    //console.log(response.body)
                     items = response.body.items
                     response.body.items.forEach(item => {
                         totalPrice += item.sum_amount
@@ -47,7 +47,7 @@ class OrderController {
                         //console.log(good)
                         goods.push(good)
                     })
-                    console.log(goods)
+                    //console.log(goods)
             })
             .catch(err => {
                 failed = true;
@@ -61,19 +61,25 @@ class OrderController {
         let updates = []
         //Call api to get store of good
         await superagent
-            .get('http://localhost:3001/api/goods/order-transaction')
+            .patch('http://host.docker.internal:3001/api/goods/order-transaction')
             .send(goods)
             .set('X-API-Key', 'foobar')
             .set('accept', 'json')
             .set('Authorization', req.header('Authorization'))
             .then(response => {
-                    console.log(response.body)
                     let mergeItems = items.map((item, i) => Object.assign({}, item, response.body[i]));
+                    //console.log( "mergeItems", mergeItems)
+                    //let storeGroup = mergeItems.group( ({ store_id }) => store_id );
+                    const storeGroup = mergeItems.reduce((group, product) => {
+                        const { store_id } = product;
+                        group[store_id] = group[store_id] ?? [];
+                        group[store_id].push(product);
+                        return group;
+                      }, {});
 
-                    let storeGroup = mergeItems.group( ({ store_id }) => store_id );
-                    console.log(storeGroup)
+                    //console.log( "storeGroup", storeGroup)
                     for (const [key, value] of Object.entries(storeGroup)) {
-                        console.log(key, value);
+                        //console.log(key, value);
                         let order = {
                             _id: mongoose.Types.ObjectId(),
                             account_id: data._id,
@@ -88,7 +94,7 @@ class OrderController {
                         }
                         updates.push(order)
                     }
-                    console.log(updates)
+                    //console.log("updates",updates)
             })
             .catch(err => {
                 failed = true;
@@ -99,14 +105,7 @@ class OrderController {
             })
 
         if (failed) return
-        
-        return;
         await Order.addOrders(updates)
-            .then(result => {
-                res.send({
-                    result: 'Success'
-                })
-            })
             .catch(error => {
                 console.log(error)
                 failed = true;
@@ -117,25 +116,25 @@ class OrderController {
         
         if (failed) return
         //Empty cart
-        // await superagent
-        //     .get('http://localhost:3002/api/empty-cart')
-        //     //.send({ user_id: data.user_id }) // sends a JSON post body
-        //     .set('X-API-Key', 'foobar')
-        //     .set('accept', 'json')
-        //     .set('Authorization', req.header('Authorization'))
-        //     .then(response => {
-        //             console.log(response.body)
-        //             res.send({
-        //                 result: 'Success'
-        //             })
-        //     })
-        //     .catch(err => {
-        //         failed = true;
-        //         console.log(err.status);
-        //         res.status(err.status).send({
-        //             error: 'Failed to get items from cart'
-        //         })
-        //     })
+        await superagent
+            .put('http://host.docker.internal:3002/api/cart/empty-cart')
+            //.send({ user_id: data.user_id }) // sends a JSON post body
+            .set('X-API-Key', 'foobar')
+            .set('accept', 'json')
+            .set('Authorization', req.header('Authorization'))
+            .then(response => {
+                    console.log(response.body)
+                    res.send({
+                        result: 'Success'
+                    })
+            })
+            .catch(err => {
+                failed = true;
+                console.log(err.status);
+                res.status(err.status).send({
+                    error: 'Failed to get items from cart'
+                })
+            })
     }
 
     async updateOrderStatus(req, res) {
@@ -152,7 +151,7 @@ class OrderController {
         let token = Authorization.replace('Bearer ', '')
         let data = jwt.verify(token, process.env.JWT_KEY)
         //console.log(data)
-        if (data.user_type !== 2) {
+        if (data.user_type == 1 || data.user_type== 4) {
             res.status(401).send({
                 error: 'Not authorized for this resource.'
             })
@@ -200,7 +199,7 @@ class OrderController {
         //check for pagination require.
         if(req.params.page) options['page'] = parseInt(req.params.page)
 
-        Order.loadWithPagination({ account_id: req.body.customer_id }, options)
+        Order.loadWithPagination({ account_id: data._id }, options)
             .then(function (result) {
                 //console.log(result.docs)
                 res.send(
@@ -236,7 +235,7 @@ class OrderController {
         }
 
         await superagent
-            .get('http://localhost:3001/api/store')
+            .get('http://host.docker.internal:3001/api/store')
             .set('X-API-Key', 'foobar')
             .set('accept', 'json')
             .set('Authorization', req.header('Authorization'))
