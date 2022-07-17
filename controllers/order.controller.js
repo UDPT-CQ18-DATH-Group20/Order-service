@@ -99,17 +99,7 @@ class OrderController {
             })
 
         if (failed) return
-        // let order = {
-        //     _id: mongoose.Types.ObjectId(),
-        //     account_id: data._id,
-        //     phone: req.body.phone,
-        //     email: req.body.email,
-        //     address: req.body.address,
-        //     receiver_name: req.body.receiver,
-        //     total_amount: totalPrice,
-        //     date: new Date(),
-        //     items: items
-        // }
+        
         return;
         await Order.addOrders(updates)
             .then(result => {
@@ -205,7 +195,7 @@ class OrderController {
 
         let options = {
             page: 1,
-            limit: 10,
+            limit: 30,
         }; 
         //check for pagination require.
         if(req.params.page) options['page'] = parseInt(req.params.page)
@@ -245,9 +235,26 @@ class OrderController {
             return
         }
 
+        await superagent
+            .get('http://localhost:3001/api/store')
+            .set('X-API-Key', 'foobar')
+            .set('accept', 'json')
+            .set('Authorization', req.header('Authorization'))
+            .then(response => {
+                    console.log(response.body)
+                    //store_id = response.body._id
+            })
+            .catch(err => {
+                failed = true;
+                //console.log(err.status);
+                res.status(424).send({
+                    error: 'Failed to get store info of items'
+                })
+            })
+            
         let options = {
             page: 1,
-            limit: 10,
+            limit: 30,
         }; 
         //check for pagination require.
         if(req.params.page) options['page'] = parseInt(req.params.page)
