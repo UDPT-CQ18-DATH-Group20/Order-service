@@ -315,7 +315,38 @@ class OrderController {
                 })
             });
     }
-    
+    async updateIsComment(req, res) {
+        //console.log(req.body)
+        let Authorization = req.header('Authorization')
+        if (!Authorization) {
+            res.status(401).send({
+                error: 'Not authorized for this resource.'
+            })
+            return
+        }
+
+        //Role check
+        let token = Authorization.replace('Bearer ', '')
+        let data = jwt.verify(token, process.env.JWT_KEY)
+        //console.log(data)
+        if (data.user_type !== 1) {
+            res.status(401).send({
+                error: 'Not authorized for this resource.'
+            })
+            return
+        }
+        let order = await Order.getOrderById(req.body.order_id)
+        let index = order.items.findIndex((e)=> e.goods_id == req.body.goods_id);
+        if ( index == -1) {
+            res.status(401).send({
+                error: 'không tìm thấy sản phẩm trong hoá đơn'
+            })
+            return
+        }
+        order.items[index].is_comment = true;
+        await order.save()
+        res.send(true)
+    }
 }
 
 module.exports = new OrderController();

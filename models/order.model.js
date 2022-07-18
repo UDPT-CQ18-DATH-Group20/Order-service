@@ -46,6 +46,10 @@ const orderSchema = new Schema({
         sum_amount: {
             type: Number,
             auto: 0
+        },
+        is_comment: {
+            type: Boolean,
+            default: false
         }
     }],
     store_id: {
@@ -89,7 +93,7 @@ module.exports  = {
     },
 
     async getOrderById(id) {
-        return await Order.findOne(id);
+        return await Order.findById(id);
     },
 
 }

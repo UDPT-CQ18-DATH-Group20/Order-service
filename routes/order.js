@@ -9,7 +9,7 @@ router.post('/update', controller.updateOrderStatus);
 router.get('/customerOrders', controller.loadOrdersOfCustomer);
 router.get('/storeOrders', controller.loadOrdersFromStore);
 router.get('/readyOrders', controller.loadReadyOrders);
-
+router.post('/update/comment', controller.updateIsComment)
 
 
 
